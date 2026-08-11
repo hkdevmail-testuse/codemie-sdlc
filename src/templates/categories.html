@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Categories - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Expense Tracker</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('add_page') }}">Add Purchase</a>
+            <a href="{{ url_for('categories_page') }}">Manage Categories</a>
+            <a href="{{ url_for('budgets_page') }}">Manage Budgets</a>
+            <a href="{{ url_for('monthly_page') }}">Monthly Overview</a>
+            <a href="{{ url_for('recent_page') }}">View Recent</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <h2>Manage Expense Categories</h2>
+        
+        <div class="form-section">
+            <h3>Add New Category</h3>
+            <form id="categoryForm">
+                <label for="categoryName">Category Name: <span class="required">*</span></label>
+                <input type="text" id="categoryName" name="categoryName" required placeholder="e.g., Entertainment">
+                <button type="submit">Add Category</button>
+            </form>
+            <p id="categoryMessage"></p>
+        </div>
+
+        <div class="table-section">
+            <h3>Existing Categories</h3>
+            <table id="categoriesTable">
+                <thead>
+                    <tr>
+                        <th>Category Name</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='categories.js') }}"></script>
+</body>
+</html>
