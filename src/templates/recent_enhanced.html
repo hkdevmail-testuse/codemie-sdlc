@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recent Expenses - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles_enhanced.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Expense Tracker</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('add_page') }}">Add Purchase</a>
+            <a href="{{ url_for('monthly_page') }}">Monthly Overview</a>
+            <a href="{{ url_for('recent_page') }}">View Recent</a>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Recent Expenses</h2>
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <h3>Filter Expenses</h3>
+            <form id="filterForm">
+                <div class="filter-grid">
+                    <div>
+                        <label for="startDate">Start Date:</label>
+                        <input type="date" id="startDate" name="startDate">
+                    </div>
+                    <div>
+                        <label for="endDate">End Date:</label>
+                        <input type="date" id="endDate" name="endDate">
+                    </div>
+                    <div>
+                        <label for="filterCategory">Category:</label>
+                        <select id="filterCategory" name="filterCategory">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filterBusiness">Business:</label>
+                        <input type="text" id="filterBusiness" name="filterBusiness" placeholder="Search by business name">
+                    </div>
+                    <div>
+                        <label for="minAmount">Min Amount ($):</label>
+                        <input type="number" id="minAmount" name="minAmount" step="0.01" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label for="maxAmount">Max Amount ($):</label>
+                        <input type="number" id="maxAmount" name="maxAmount" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="filter-buttons">
+                    <button type="submit">Apply Filters</button>
+                    <button type="button" id="clearFilters" class="btn-cancel">Clear Filters</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Expenses Table -->
+        <table id="purchasesTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Business</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Photo</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be populated by JavaScript -->
+            </tbody>
+        </table>
+    </main>
+
+    <script src="{{ url_for('static', filename='script_enhanced.js') }}"></script>
+</body>
+</html>
