@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles_enhanced.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Expense Tracker</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('add_page') }}">Add Purchase</a>
+            <a href="{{ url_for('monthly_page') }}">Monthly Overview</a>
+            <a href="{{ url_for('recent_page') }}">View Recent</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="analytics-card">
+            <h2>Welcome to Your Expense Tracker</h2>
+            <p>Track your spending and stay on top of your finances with powerful analytics and insights.</p>
+        </div>
+
+        <!-- Analytics Filter Section -->
+        <div class="filter-section">
+            <h3>Filter Analytics by Date Range</h3>
+            <form id="analyticsFilterForm">
+                <div class="filter-grid">
+                    <div>
+                        <label for="analyticsStartDate">Start Date:</label>
+                        <input type="date" id="analyticsStartDate" name="analyticsStartDate">
+                    </div>
+                    <div>
+                        <label for="analyticsEndDate">End Date:</label>
+                        <input type="date" id="analyticsEndDate" name="analyticsEndDate">
+                    </div>
+                </div>
+                <div class="filter-buttons">
+                    <button type="submit">Apply Date Filter</button>
+                    <button type="button" id="clearAnalyticsFilters" class="btn-cancel">Show All Time</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="analytics-card">
+            <h2>All Time Data</h2>
+            
+            <div id="dataContainer">
+                <div id="lineGraphContainer">
+                    <h3>Monthly Spending Trend</h3>
+                    <canvas id="monthlySpendingChart"></canvas>
+                </div>
+                
+                <div id="pieChartContainer">
+                    <h3>Spending by Category</h3>
+                    <canvas id="allTimeCategoriesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script_enhanced.js') }}"></script>
+</body>
+</html>
