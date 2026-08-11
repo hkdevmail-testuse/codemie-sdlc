@@ -1,0 +1,383 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  line-height: 1.6;
+  background: #f4f4f4;
+  color: #333;
+}
+
+header {
+  background-color: #4e7aa6;
+  color: white;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+}
+
+nav a {
+  color: white;
+  margin: 0 10px;
+  text-decoration: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+nav a:hover {
+  text-decoration: none;
+  background-color: #ff5733;
+  color: white;
+}
+
+nav a:active {
+  transform: scale(0.95);
+  background-color: #e04e2a;
+}
+
+main {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Forms */
+form label {
+  display: block;
+  margin: 10px 0 5px;
+  font-weight: bold;
+}
+
+.required {
+  color: #ff5733;
+}
+
+button, .btn-primary, .btn-secondary {
+  background-color: #ff5733;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 20px;
+  transition: transform 0.1s, background-color 0.2s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-secondary {
+  background-color: #4e7aa6;
+  margin-left: 10px;
+}
+
+button:hover, .btn-primary:hover {
+  background-color: #e04d2c;
+  transform: scale(1.05);
+}
+
+.btn-secondary:hover {
+  background-color: #3d6085;
+  transform: scale(1.05);
+}
+
+button:active, .btn-primary:active, .btn-secondary:active {
+  transform: scale(0.95);
+}
+
+.btn-edit {
+  background-color: #4caf50;
+  padding: 5px 10px;
+  font-size: 14px;
+  margin: 2px;
+}
+
+.btn-delete {
+  background-color: #f44336;
+  padding: 5px 10px;
+  font-size: 14px;
+  margin: 2px;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background: white;
+}
+
+table, th, td {
+  border: 1px solid #ddd;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+}
+
+th {
+  background-color: #4e7aa6;
+  color: white;
+}
+
+h2 {
+  color: #4e7aa6;
+}
+
+/* Monthly Overview */
+#monthlyOverview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 0;
+}
+
+@media (min-width: 900px) {
+  #monthlyOverview {
+    grid-template-columns: repeat(3, minmax(300px, 1fr));
+  }
+}
+
+#monthlyOverview .overview-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f9f9f9;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+
+#monthlyOverview .overview-item:nth-child(odd) {
+  background-color: #e9e9e9;
+}
+
+#monthlyOverview .overview-item .month-name {
+  font-weight: bold;
+  color: #155fa9;
+}
+
+#monthlyOverview .overview-item .total-amount {
+  font-weight: bold;
+  color: #333;
+}
+
+#monthlyOverview .overview-item .pie-chart-container {
+  width: 100%;
+  height: 250px;
+  position: relative;
+}
+
+#monthlyOverview .overview-item .pie-chart {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+
+/* Form inputs */
+select, input[type="text"], input[type="number"], input[type="date"], 
+input[type="month"], textarea, form input, form textarea {
+  width: calc(100% - 30px);
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+select {
+  background-color: #4b657f;
+  color: white;
+  font-size: 0.9rem;
+}
+
+form input:focus, form textarea:focus {
+  border-color: #ff5733;
+  outline: none;
+}
+
+/* Charts */
+#dataContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+#pieChartContainer, #lineGraphContainer {
+  flex: 1 1 45%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+}
+
+#monthlySpendingChart, #allTimeCategoriesChart {
+  width: 100%;
+  max-height: 500px;
+  min-width: 200px;
+}
+
+/* Budget Alerts */
+.budget-alert {
+  background-color: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 5px;
+  padding: 15px;
+  margin: 20px 0;
+}
+
+.budget-alert.exceeded {
+  background-color: #f8d7da;
+  border-color: #f44336;
+}
+
+/* Budget Status Cards */
+.budget-status-section {
+  margin-bottom: 30px;
+}
+
+#budgetStatusContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 20px;
+}
+
+.budget-status-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.budget-status-card.exceeded {
+  border-color: #f44336;
+  background-color: #fff5f5;
+}
+
+.budget-status-card h4 {
+  margin: 0 0 10px 0;
+  color: #4e7aa6;
+}
+
+.budget-progress {
+  height: 20px;
+  background-color: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.progress-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.budget-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.budget-percentage {
+  font-weight: bold;
+}
+
+.budget-warning {
+  color: #d32f2f;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.budget-remaining {
+  color: #388e3c;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+/* Messages */
+.success-message {
+  color: #4caf50;
+  padding: 10px;
+  background-color: #e8f5e9;
+  border: 1px solid #4caf50;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+.error-message {
+  color: #f44336;
+  padding: 10px;
+  background-color: #ffebee;
+  border: 1px solid #f44336;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+.info-message {
+  color: #2196f3;
+  padding: 10px;
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+/* Sections */
+.form-section, .table-section, .filters-section, .action-buttons {
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons {
+  text-align: center;
+}
+
+/* Filters */
+.filter-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.filter-controls label {
+  font-size: 14px;
+}
+
+.filter-controls input, .filter-controls select {
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  nav a {
+    display: block;
+    margin: 5px 0;
+  }
+
+  #dataContainer {
+    flex-direction: column;
+  }
+
+  #pieChartContainer, #lineGraphContainer {
+    flex: 1 1 100%;
+  }
+
+  .filter-controls {
+    grid-template-columns: 1fr;
+  }
+}
