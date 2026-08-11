@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recent Purchases - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Expense Tracker</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('add_page') }}">Add Purchase</a>
+            <a href="{{ url_for('categories_page') }}">Manage Categories</a>
+            <a href="{{ url_for('budgets_page') }}">Manage Budgets</a>
+            <a href="{{ url_for('monthly_page') }}">Monthly Overview</a>
+            <a href="{{ url_for('recent_page') }}">View Recent</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <h2>Recent Purchases</h2>
+        
+        <div class="filters-section">
+            <h3>Filters</h3>
+            <div class="filter-controls">
+                <label for="filterMonth">Month:</label>
+                <input type="month" id="filterMonth" name="filterMonth">
+
+                <label for="filterCategory">Category:</label>
+                <select id="filterCategory" name="filterCategory">
+                    <option value="">All Categories</option>
+                </select>
+
+                <label for="filterTag">Tag:</label>
+                <input type="text" id="filterTag" name="filterTag" placeholder="Filter by tag">
+
+                <label for="filterRecurring">Recurring:</label>
+                <select id="filterRecurring" name="filterRecurring">
+                    <option value="">All</option>
+                    <option value="1">Recurring Only</option>
+                    <option value="0">One-time Only</option>
+                </select>
+
+                <button onclick="applyFilters()" class="btn-primary">Apply Filters</button>
+                <button onclick="clearFilters()" class="btn-secondary">Clear Filters</button>
+            </div>
+        </div>
+
+        <table id="purchasesTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Business</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Tags</th>
+                    <th>Recurring</th>
+                    <th>Notes</th>
+                    <th>Photo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Populated dynamically -->
+            </tbody>
+        </table>
+    </main>
+    <script src="{{ url_for('static', filename='recent.js') }}"></script>
+</body>
+</html>
