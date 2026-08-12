@@ -7,9 +7,10 @@ import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Flask, jsonify, render_template, request, session, redirect, url_for
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for, make_response
 
 from db.init_db import init_db
+from utils.export_utils import generate_csv, generate_pdf, generate_category_summary_csv
 
 
 def create_app() -> Flask:
@@ -47,6 +48,127 @@ def create_app() -> Flask:
 
     def safe_sort(sort_value: str | None) -> str:
         return "ASC" if (sort_value or "").upper() == "ASC" else "DESC"
+
+    def get_filtered_expenses(user_id: str, params: dict) -> list[dict]:
+        """Helper function to fetch filtered expenses based on query parameters"""
+        try:
+            limit_raw = params.get("limit", "50")
+            limit = max(1, min(int(limit_raw), 500))
+        except ValueError:
+            limit = 50
+
+        month = (params.get("month") or "").strip() or None
+        category_filter = (params.get("category") or "").strip() or None
+        tag_filter = (params.get("tag") or "").strip() or None
+        recurring_filter = params.get("recurring")  # "0", "1", or None
+        search = (params.get("search") or "").strip() or None
+        sort_by = (params.get("sort_by") or "date").strip().lower()
+        sort_order = (params.get("sort_order") or "desc").strip().lower()
+        min_amount_raw = (params.get("min_amount") or "").strip()
+        max_amount_raw = (params.get("max_amount") or "").strip()
+        start_date = (params.get("start_date") or "").strip() or None
+        end_date = (params.get("end_date") or "").strip() or None
+
+        # Validate sort_by
+        valid_sort_fields = ["date", "amount", "category", "business"]
+        if sort_by not in valid_sort_fields:
+            sort_by = "date"
+        
+        # Validate sort_order
+        sort_order = "ASC" if sort_order == "asc" else "DESC"
+        
+        # Parse amount filters
+        min_amount = None
+        max_amount = None
+        try:
+            if min_amount_raw:
+                min_amount = float(min_amount_raw)
+        except ValueError:
+            pass
+        
+        try:
+            if max_amount_raw:
+                max_amount = float(max_amount_raw)
+        except ValueError:
+            pass
+
+        with get_db_connection() as conn:
+            query = """
+                SELECT id, date, business, amount, category, description, photo, tags, is_recurring, notes
+                FROM purchases
+                WHERE user_id = ?
+            """
+            query_params = [user_id]
+
+            if month:
+                query += " AND strftime('%Y-%m', date) = ?"
+                query_params.append(month)
+            else:
+                if start_date:
+                    query += " AND date >= ?"
+                    query_params.append(start_date)
+                if end_date:
+                    query += " AND date <= ?"
+                    query_params.append(end_date)
+
+            if category_filter:
+                query += " AND category = ?"
+                query_params.append(category_filter)
+
+            if tag_filter:
+                query += " AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags = ?)"
+                query_params.extend([f"%,{tag_filter},%", f"{tag_filter},%", f"%,{tag_filter}", tag_filter])
+
+            if recurring_filter in ["0", "1"]:
+                query += " AND is_recurring = ?"
+                query_params.append(int(recurring_filter))
+
+            if search:
+                query += " AND (business LIKE ? OR description LIKE ? OR category LIKE ?)"
+                search_pattern = f"%{search}%"
+                query_params.extend([search_pattern, search_pattern, search_pattern])
+
+            if min_amount is not None:
+                query += " AND amount >= ?"
+                query_params.append(min_amount)
+
+            if max_amount is not None:
+                query += " AND amount <= ?"
+                query_params.append(max_amount)
+
+            query += f" ORDER BY {sort_by} {sort_order}"
+            
+            # Add secondary sort by id for consistency
+            if sort_by != "date":
+                query += f", date {sort_order}"
+            query += f", id {sort_order}"
+            
+            query += " LIMIT ?"
+            query_params.append(limit)
+
+            rows = conn.execute(query, query_params).fetchall()
+
+        purchases: list[dict] = []
+        for row in rows:
+            photo_b64 = None
+            if row["photo"]:
+                photo_b64 = base64.b64encode(row["photo"]).decode("utf-8")
+            purchases.append(
+                {
+                    "id": row["id"],
+                    "date": row["date"],
+                    "business": row["business"],
+                    "amount": float(row["amount"]),
+                    "category": row["category"],
+                    "description": row["description"] or "",
+                    "photo": photo_b64,
+                    "tags": row["tags"] or "",
+                    "is_recurring": row["is_recurring"],
+                    "notes": row["notes"] or "",
+                }
+            )
+
+        return purchases
 
     @app.route("/")
     @login_required
@@ -324,114 +446,7 @@ def create_app() -> Flask:
         user_id = get_current_user()
 
         try:
-            limit_raw = request.args.get("limit", "50")
-            limit = max(1, min(int(limit_raw), 500))
-        except ValueError:
-            limit = 50
-
-        month = (request.args.get("month") or "").strip() or None
-        category_filter = (request.args.get("category") or "").strip() or None
-        tag_filter = (request.args.get("tag") or "").strip() or None
-        recurring_filter = request.args.get("recurring")  # "0", "1", or None
-        search = (request.args.get("search") or "").strip() or None
-        sort_by = (request.args.get("sort_by") or "date").strip().lower()
-        sort_order = (request.args.get("sort_order") or "desc").strip().lower()
-        min_amount_raw = (request.args.get("min_amount") or "").strip()
-        max_amount_raw = (request.args.get("max_amount") or "").strip()
-
-        # Validate sort_by
-        valid_sort_fields = ["date", "amount", "category", "business"]
-        if sort_by not in valid_sort_fields:
-            sort_by = "date"
-        
-        # Validate sort_order
-        sort_order = "ASC" if sort_order == "asc" else "DESC"
-        
-        # Parse amount filters
-        min_amount = None
-        max_amount = None
-        try:
-            if min_amount_raw:
-                min_amount = float(min_amount_raw)
-        except ValueError:
-            pass
-        
-        try:
-            if max_amount_raw:
-                max_amount = float(max_amount_raw)
-        except ValueError:
-            pass
-
-        try:
-            with get_db_connection() as conn:
-                query = """
-                    SELECT id, date, business, amount, category, description, photo, tags, is_recurring, notes
-                    FROM purchases
-                    WHERE user_id = ?
-                """
-                params = [user_id]
-
-                if month:
-                    query += " AND strftime('%Y-%m', date) = ?"
-                    params.append(month)
-
-                if category_filter:
-                    query += " AND category = ?"
-                    params.append(category_filter)
-
-                if tag_filter:
-                    query += " AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags = ?)"
-                    params.extend([f"%,{tag_filter},%", f"{tag_filter},%", f"%,{tag_filter}", tag_filter])
-
-                if recurring_filter in ["0", "1"]:
-                    query += " AND is_recurring = ?"
-                    params.append(int(recurring_filter))
-
-                if search:
-                    query += " AND (business LIKE ? OR description LIKE ? OR category LIKE ?)"
-                    search_pattern = f"%{search}%"
-                    params.extend([search_pattern, search_pattern, search_pattern])
-
-                if min_amount is not None:
-                    query += " AND amount >= ?"
-                    params.append(min_amount)
-
-                if max_amount is not None:
-                    query += " AND amount <= ?"
-                    params.append(max_amount)
-
-                query += f" ORDER BY {sort_by} {sort_order}"
-                
-                # Add secondary sort by id for consistency
-                if sort_by != "date":
-                    query += f", date {sort_order}"
-                query += f", id {sort_order}"
-                
-                query += " LIMIT ?"
-                params.append(limit)
-
-                rows = conn.execute(query, params).fetchall()
-
-            purchases: list[dict] = []
-            for row in rows:
-                photo_b64 = None
-                if row["photo"]:
-                    photo_b64 = base64.b64encode(row["photo"]).decode("utf-8")
-                purchases.append(
-                    {
-                        "id": row["id"],
-                        "date": row["date"],
-                        "business": row["business"],
-                        "amount": float(row["amount"]),
-                        "category": row["category"],
-                        "description": row["description"] or "",
-                        "photo": photo_b64,
-                        "tags": row["tags"] or "",
-                        "is_recurring": row["is_recurring"],
-                        "notes": row["notes"] or "",
-                    }
-                )
-
+            purchases = get_filtered_expenses(user_id, request.args.to_dict())
             return jsonify(purchases)
         except sqlite3.Error as e:
             return jsonify({"error": str(e)}), 500
@@ -896,8 +911,8 @@ def create_app() -> Flask:
 
     @app.route("/api/export-csv", methods=["GET"])
     @login_required
-    def export_csv():
-        """Export all expenses to CSV"""
+    def export_csv_deprecated():
+        """Export all expenses to CSV (deprecated, use /export/csv)"""
         user_id = get_current_user()
 
         try:
@@ -1041,6 +1056,170 @@ def create_app() -> Flask:
                 "skipped": skipped_count,
                 "errors": error_rows[:10]  # Return first 10 errors
             })
+
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # ==================== Export Endpoints ====================
+
+    @app.route("/export/csv", methods=["GET"])
+    @login_required
+    def export_csv_filtered():
+        """Export filtered expenses to CSV"""
+        user_id = get_current_user()
+
+        try:
+            # Get filtered expenses using the helper function
+            expenses = get_filtered_expenses(user_id, request.args.to_dict())
+
+            # Generate filename based on filters
+            month = request.args.get("month")
+            start_date = request.args.get("start_date")
+            end_date = request.args.get("end_date")
+            
+            if month:
+                filename = f"expenses_{month}.csv"
+            elif start_date and end_date:
+                filename = f"expenses_{start_date}_to_{end_date}.csv"
+            elif start_date:
+                filename = f"expenses_from_{start_date}.csv"
+            elif end_date:
+                filename = f"expenses_until_{end_date}.csv"
+            else:
+                filename = f"all_expenses_{datetime.now().strftime('%Y%m%d')}.csv"
+
+            # Generate CSV content
+            csv_content = generate_csv(expenses)
+
+            # Create response with proper headers
+            response = make_response(csv_content)
+            response.headers["Content-Type"] = "text/csv; charset=utf-8"
+            response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+
+            return response
+
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route("/export/pdf", methods=["GET"])
+    @login_required
+    def export_pdf_filtered():
+        """Export filtered expenses to PDF"""
+        user_id = get_current_user()
+
+        try:
+            # Get filtered expenses using the helper function
+            expenses = get_filtered_expenses(user_id, request.args.to_dict())
+
+            # Generate filename based on filters
+            month = request.args.get("month")
+            start_date = request.args.get("start_date")
+            end_date = request.args.get("end_date")
+            
+            if month:
+                filename = f"expense_report_{month}.pdf"
+            elif start_date and end_date:
+                filename = f"expense_report_{start_date}_to_{end_date}.pdf"
+            elif start_date:
+                filename = f"expense_report_from_{start_date}.pdf"
+            elif end_date:
+                filename = f"expense_report_until_{end_date}.pdf"
+            else:
+                filename = f"expense_report_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+            # Generate PDF content
+            pdf_content = generate_pdf(expenses)
+
+            # Create response with proper headers
+            response = make_response(pdf_content)
+            response.headers["Content-Type"] = "application/pdf"
+            response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+
+            return response
+
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route("/export/category-csv", methods=["GET"])
+    @login_required
+    def export_category_summary_csv():
+        """Export category summary to CSV"""
+        user_id = get_current_user()
+
+        try:
+            month = (request.args.get("month") or "").strip() or None
+            start_date = (request.args.get("start_date") or "").strip() or None
+            end_date = (request.args.get("end_date") or "").strip() or None
+
+            # Validate date formats if provided
+            if start_date:
+                try:
+                    parse_iso_date(start_date)
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+
+            if end_date:
+                try:
+                    parse_iso_date(end_date)
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+            # Fetch category summary data
+            with get_db_connection() as conn:
+                query = """
+                    SELECT category, SUM(amount) AS total_amount, COUNT(*) as transaction_count
+                    FROM purchases
+                    WHERE user_id = ?
+                """
+                params = [user_id]
+
+                # Month filter takes precedence
+                if month:
+                    query += " AND strftime('%Y-%m', date) = ?"
+                    params.append(month)
+                else:
+                    if start_date:
+                        query += " AND date >= ?"
+                        params.append(start_date)
+                    if end_date:
+                        query += " AND date <= ?"
+                        params.append(end_date)
+
+                query += " GROUP BY category ORDER BY total_amount DESC"
+
+                rows = conn.execute(query, params).fetchall()
+
+            # Convert to list of dicts
+            category_data = [
+                {
+                    "category": row["category"],
+                    "total_amount": float(row["total_amount"]),
+                    "transaction_count": row["transaction_count"]
+                }
+                for row in rows
+            ]
+
+            # Generate filename
+            if month:
+                filename = f"category_summary_{month}.csv"
+            elif start_date and end_date:
+                filename = f"category_summary_{start_date}_to_{end_date}.csv"
+            elif start_date:
+                filename = f"category_summary_from_{start_date}.csv"
+            elif end_date:
+                filename = f"category_summary_until_{end_date}.csv"
+            else:
+                filename = f"category_summary_{datetime.now().strftime('%Y%m%d')}.csv"
+
+            # Generate CSV content
+            csv_content = generate_category_summary_csv(category_data)
+
+            # Create response with proper headers
+            response = make_response(csv_content)
+            response.headers["Content-Type"] = "text/csv; charset=utf-8"
+            response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+
+            return response
 
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
