@@ -22,8 +22,24 @@
     <main>
         <h2>Recent Purchases</h2>
         
+        <!-- Status Messages -->
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+        
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+        
         <div class="filters-section">
             <h3>Filters</h3>
+            
+            <!-- Search Input -->
+            <div class="filter-controls">
+                <label for="searchInput">Search:</label>
+                <input type="text" id="searchInput" name="searchInput" placeholder="Search by business, description, or tags">
+            </div>
+            
             <div class="filter-controls">
                 <label for="filterMonth">Month:</label>
                 <input type="month" id="filterMonth" name="filterMonth">
@@ -42,7 +58,35 @@
                     <option value="1">Recurring Only</option>
                     <option value="0">One-time Only</option>
                 </select>
-
+            </div>
+            
+            <!-- Amount Range Filters -->
+            <div class="filter-controls">
+                <label for="minAmount">Min Amount:</label>
+                <input type="number" id="minAmount" name="minAmount" placeholder="0.00" step="0.01" min="0">
+                
+                <label for="maxAmount">Max Amount:</label>
+                <input type="number" id="maxAmount" name="maxAmount" placeholder="1000.00" step="0.01" min="0">
+            </div>
+            
+            <!-- Sort Options -->
+            <div class="filter-controls">
+                <label for="sortBy">Sort By:</label>
+                <select id="sortBy" name="sortBy">
+                    <option value="date">Date</option>
+                    <option value="amount">Amount</option>
+                    <option value="category">Category</option>
+                    <option value="business">Business</option>
+                </select>
+                
+                <label for="sortOrder">Order:</label>
+                <select id="sortOrder" name="sortOrder">
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                </select>
+            </div>
+            
+            <div class="filter-controls">
                 <button onclick="applyFilters()" class="btn-primary">Apply Filters</button>
                 <button onclick="clearFilters()" class="btn-secondary">Clear Filters</button>
             </div>
@@ -60,6 +104,7 @@
                     <th>Recurring</th>
                     <th>Notes</th>
                     <th>Photo</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -67,6 +112,84 @@
             </tbody>
         </table>
     </main>
+    
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Expense</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Modal Loading Indicator -->
+                <div id="modalLoadingIndicator" class="loading-indicator" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Saving...</p>
+                </div>
+                
+                <form id="editExpenseForm">
+                    <input type="hidden" id="editExpenseId" name="expenseId">
+                    
+                    <div class="form-group">
+                        <label for="editDate">Date:</label>
+                        <input type="date" id="editDate" name="date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editBusiness">Business:</label>
+                        <input type="text" id="editBusiness" name="business" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editAmount">Amount:</label>
+                        <input type="number" id="editAmount" name="amount" step="0.01" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editCategory">Category:</label>
+                        <select id="editCategory" name="category" required>
+                            <option value="">Select Category</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editDescription">Description:</label>
+                        <textarea id="editDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editTags">Tags:</label>
+                        <input type="text" id="editTags" name="tags" placeholder="Comma-separated tags">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editRecurring">
+                            <input type="checkbox" id="editRecurring" name="recurring">
+                            Recurring Purchase
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editNotes">Notes:</label>
+                        <textarea id="editNotes" name="notes" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editPhoto">Receipt Photo:</label>
+                        <input type="file" id="editPhoto" name="photo" accept="image/*">
+                        <div id="currentPhotoPreview" style="margin-top: 10px;"></div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer">
+                <button onclick="saveExpense()" class="btn-primary">Save Changes</button>
+                <button onclick="closeEditModal()" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
     <script src="{{ url_for('static', filename='recent.js') }}"></script>
 </body>
 </html>
