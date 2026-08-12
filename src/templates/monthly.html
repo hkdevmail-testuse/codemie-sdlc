@@ -22,8 +22,99 @@
     </header>
     <main>
         <h2>Monthly Expenses</h2>
+        
+        <!-- Date Range Selector Section -->
+        <div class="date-range-section">
+            <div class="date-range-controls">
+                <div class="date-input-group">
+                    <label for="startDate">Start Date:</label>
+                    <input type="date" id="startDate" name="startDate">
+                </div>
+                <div class="date-input-group">
+                    <label for="endDate">End Date:</label>
+                    <input type="date" id="endDate" name="endDate">
+                </div>
+                <div class="date-range-buttons">
+                    <button id="applyDateRange" class="btn btn-primary">Apply Date Range</button>
+                    <button id="clearDateRange" class="btn btn-secondary">View All Time</button>
+                </div>
+            </div>
+            
+            <!-- Export Buttons -->
+            <div class="export-controls">
+                <button id="exportCSV" class="btn btn-export">
+                    <span>📊</span> Export to CSV
+                </button>
+                <button id="exportPDF" class="btn btn-export">
+                    <span>📄</span> Export to PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Current Period Display -->
+        <div class="current-period-display">
+            <div class="period-info">
+                <h3>Selected Period</h3>
+                <p id="currentPeriodText">All Time</p>
+            </div>
+            <div class="period-total">
+                <h3>Total Spending</h3>
+                <p id="periodTotalAmount" class="total-amount">$0.00</p>
+            </div>
+        </div>
+
+        <!-- Summary Cards Section -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-card-icon">💰</div>
+                <div class="summary-card-content">
+                    <h4>Total Expenses</h4>
+                    <p id="summaryTotalExpenses" class="summary-value">$0.00</p>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-card-icon">📝</div>
+                <div class="summary-card-content">
+                    <h4>Transactions</h4>
+                    <p id="summaryTransactionCount" class="summary-value">0</p>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-card-icon">📊</div>
+                <div class="summary-card-content">
+                    <h4>Average Transaction</h4>
+                    <p id="summaryAverageAmount" class="summary-value">$0.00</p>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-card-icon">🏆</div>
+                <div class="summary-card-content">
+                    <h4>Top Category</h4>
+                    <p id="summaryTopCategory" class="summary-value">N/A</p>
+                    <p id="summaryTopCategoryAmount" class="summary-subvalue">$0.00</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <!-- Monthly Overview Chart Container -->
         <div id="monthlyOverview">
             <!-- Populated dynamically -->
+        </div>
+
+        <!-- No Data Message -->
+        <div id="noDataMessage" class="no-data-message" style="display: none;">
+            <div class="no-data-icon">📭</div>
+            <h3>No Expenses Found</h3>
+            <p>There are no expenses recorded for the selected date range.</p>
         </div>
     </main>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
