@@ -137,6 +137,186 @@ def create_app() -> Flask:
         except sqlite3.Error as e:
             return jsonify({"success": False, "error": str(e)}), 500
 
+    @app.route("/expense/<int:expense_id>", methods=["GET"])
+    @login_required
+    def get_expense(expense_id: int):
+        """Get a single expense by ID"""
+        user_id = get_current_user()
+        
+        try:
+            with get_db_connection() as conn:
+                row = conn.execute(
+                    """
+                    SELECT id, date, business, amount, category, description, photo, tags, is_recurring, notes
+                    FROM purchases
+                    WHERE id = ? AND user_id = ?
+                    """,
+                    (expense_id, user_id)
+                ).fetchone()
+                
+                if not row:
+                    return jsonify({"success": False, "error": "Expense not found"}), 404
+                
+                photo_b64 = None
+                if row["photo"]:
+                    photo_b64 = base64.b64encode(row["photo"]).decode("utf-8")
+                
+                expense = {
+                    "id": row["id"],
+                    "date": row["date"],
+                    "business": row["business"],
+                    "amount": float(row["amount"]),
+                    "category": row["category"],
+                    "description": row["description"] or "",
+                    "photo": photo_b64,
+                    "tags": row["tags"] or "",
+                    "is_recurring": row["is_recurring"],
+                    "notes": row["notes"] or "",
+                }
+                
+                return jsonify(expense)
+        except sqlite3.Error as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route("/update/<int:expense_id>", methods=["PUT", "PATCH"])
+    @login_required
+    def update_expense(expense_id: int):
+        """Update an existing expense"""
+        user_id = get_current_user()
+        
+        # Handle both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            date = (data.get("date") or "").strip()
+            business = (data.get("business") or "").strip()
+            amount_raw = (data.get("amount") or "").strip() if isinstance(data.get("amount"), str) else data.get("amount")
+            category = (data.get("category") or "").strip()
+            description = (data.get("description") or "").strip() or None
+            tags = (data.get("tags") or "").strip() or None
+            is_recurring = 1 if data.get("is_recurring") in [True, "true", "1", 1] else 0
+            notes = (data.get("notes") or "").strip() or None
+            photo_blob = None
+            remove_photo = data.get("remove_photo", False)
+        else:
+            date = (request.form.get("date") or "").strip()
+            business = (request.form.get("business") or "").strip()
+            amount_raw = (request.form.get("amount") or "").strip()
+            category = (request.form.get("category") or "").strip()
+            description = (request.form.get("description") or "").strip() or None
+            tags = (request.form.get("tags") or "").strip() or None
+            is_recurring = 1 if request.form.get("is_recurring") == "on" else 0
+            notes = (request.form.get("notes") or "").strip() or None
+            photo_file = request.files.get("photo")
+            remove_photo = request.form.get("remove_photo") == "true"
+            
+            photo_blob = None
+            if photo_file and photo_file.filename:
+                photo_blob = photo_file.read()
+
+        if not date or not business or amount_raw is None or not category:
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+        try:
+            date = parse_iso_date(date)
+        except ValueError:
+            return jsonify({"success": False, "error": "Invalid date format"}), 400
+
+        try:
+            amount = float(amount_raw)
+            if amount < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "error": "Invalid amount"}), 400
+
+        try:
+            with get_db_connection() as conn:
+                # Check if expense exists and belongs to user
+                existing = conn.execute(
+                    "SELECT id FROM purchases WHERE id = ? AND user_id = ?",
+                    (expense_id, user_id)
+                ).fetchone()
+                
+                if not existing:
+                    return jsonify({"success": False, "error": "Expense not found"}), 404
+                
+                # Build update query based on whether photo is being updated
+                if remove_photo:
+                    # Remove photo
+                    result = conn.execute(
+                        """
+                        UPDATE purchases
+                        SET date = ?, business = ?, amount = ?, category = ?, description = ?, 
+                            photo = NULL, tags = ?, is_recurring = ?, notes = ?
+                        WHERE id = ? AND user_id = ?
+                        """,
+                        (date, business, amount, category, description, tags, is_recurring, notes, expense_id, user_id)
+                    )
+                elif photo_blob is not None:
+                    # Update with new photo
+                    result = conn.execute(
+                        """
+                        UPDATE purchases
+                        SET date = ?, business = ?, amount = ?, category = ?, description = ?, 
+                            photo = ?, tags = ?, is_recurring = ?, notes = ?
+                        WHERE id = ? AND user_id = ?
+                        """,
+                        (date, business, amount, category, description, photo_blob, tags, is_recurring, notes, expense_id, user_id)
+                    )
+                else:
+                    # Update without touching photo
+                    result = conn.execute(
+                        """
+                        UPDATE purchases
+                        SET date = ?, business = ?, amount = ?, category = ?, description = ?, 
+                            tags = ?, is_recurring = ?, notes = ?
+                        WHERE id = ? AND user_id = ?
+                        """,
+                        (date, business, amount, category, description, tags, is_recurring, notes, expense_id, user_id)
+                    )
+                
+                conn.commit()
+                
+                if result.rowcount == 0:
+                    return jsonify({"success": False, "error": "Failed to update expense"}), 500
+                
+                # Check budget cap after update
+                budget_alert = check_budget_cap(conn, category, user_id, date)
+                
+                return jsonify({"success": True, "message": "Expense updated successfully", "budget_alert": budget_alert})
+        except sqlite3.Error as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route("/delete/<int:expense_id>", methods=["DELETE"])
+    @login_required
+    def delete_expense(expense_id: int):
+        """Delete an expense"""
+        user_id = get_current_user()
+        
+        try:
+            with get_db_connection() as conn:
+                # Check if expense exists and belongs to user
+                existing = conn.execute(
+                    "SELECT id FROM purchases WHERE id = ? AND user_id = ?",
+                    (expense_id, user_id)
+                ).fetchone()
+                
+                if not existing:
+                    return jsonify({"success": False, "error": "Expense not found"}), 404
+                
+                # Delete the expense
+                result = conn.execute(
+                    "DELETE FROM purchases WHERE id = ? AND user_id = ?",
+                    (expense_id, user_id)
+                )
+                conn.commit()
+                
+                if result.rowcount == 0:
+                    return jsonify({"success": False, "error": "Failed to delete expense"}), 500
+                
+                return jsonify({"success": True, "message": "Expense deleted successfully"})
+        except sqlite3.Error as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
     @app.route("/month-data", methods=["GET"])
     @login_required
     def get_month_data():
@@ -153,6 +333,34 @@ def create_app() -> Flask:
         category_filter = (request.args.get("category") or "").strip() or None
         tag_filter = (request.args.get("tag") or "").strip() or None
         recurring_filter = request.args.get("recurring")  # "0", "1", or None
+        search = (request.args.get("search") or "").strip() or None
+        sort_by = (request.args.get("sort_by") or "date").strip().lower()
+        sort_order = (request.args.get("sort_order") or "desc").strip().lower()
+        min_amount_raw = (request.args.get("min_amount") or "").strip()
+        max_amount_raw = (request.args.get("max_amount") or "").strip()
+
+        # Validate sort_by
+        valid_sort_fields = ["date", "amount", "category", "business"]
+        if sort_by not in valid_sort_fields:
+            sort_by = "date"
+        
+        # Validate sort_order
+        sort_order = "ASC" if sort_order == "asc" else "DESC"
+        
+        # Parse amount filters
+        min_amount = None
+        max_amount = None
+        try:
+            if min_amount_raw:
+                min_amount = float(min_amount_raw)
+        except ValueError:
+            pass
+        
+        try:
+            if max_amount_raw:
+                max_amount = float(max_amount_raw)
+        except ValueError:
+            pass
 
         try:
             with get_db_connection() as conn:
@@ -179,7 +387,27 @@ def create_app() -> Flask:
                     query += " AND is_recurring = ?"
                     params.append(int(recurring_filter))
 
-                query += " ORDER BY date DESC, id DESC LIMIT ?"
+                if search:
+                    query += " AND (business LIKE ? OR description LIKE ? OR category LIKE ?)"
+                    search_pattern = f"%{search}%"
+                    params.extend([search_pattern, search_pattern, search_pattern])
+
+                if min_amount is not None:
+                    query += " AND amount >= ?"
+                    params.append(min_amount)
+
+                if max_amount is not None:
+                    query += " AND amount <= ?"
+                    params.append(max_amount)
+
+                query += f" ORDER BY {sort_by} {sort_order}"
+                
+                # Add secondary sort by id for consistency
+                if sort_by != "date":
+                    query += f", date {sort_order}"
+                query += f", id {sort_order}"
+                
+                query += " LIMIT ?"
                 params.append(limit)
 
                 rows = conn.execute(query, params).fetchall()
@@ -214,18 +442,41 @@ def create_app() -> Flask:
         user_id = get_current_user()
         try:
             sort_by = safe_sort(request.args.get("sort"))
+            start_date = (request.args.get("start_date") or "").strip() or None
+            end_date = (request.args.get("end_date") or "").strip() or None
+
+            # Validate date formats if provided
+            if start_date:
+                try:
+                    parse_iso_date(start_date)
+                except ValueError:
+                    return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+
+            if end_date:
+                try:
+                    parse_iso_date(end_date)
+                except ValueError:
+                    return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
 
             with get_db_connection() as conn:
-                rows = conn.execute(
-                    f"""
+                query = """
                     SELECT strftime('%Y-%m', date) AS month, SUM(amount) AS total_amount
                     FROM purchases
                     WHERE user_id = ?
-                    GROUP BY month
-                    ORDER BY month {sort_by}
-                    """,
-                    (user_id,)
-                ).fetchall()
+                """
+                params = [user_id]
+
+                if start_date:
+                    query += " AND date >= ?"
+                    params.append(start_date)
+
+                if end_date:
+                    query += " AND date <= ?"
+                    params.append(end_date)
+
+                query += f" GROUP BY month ORDER BY month {sort_by}"
+
+                rows = conn.execute(query, params).fetchall()
 
             monthly_totals = [
                 {"month": row["month"], "total": float(row["total_amount"] or 0)}
@@ -241,30 +492,46 @@ def create_app() -> Flask:
         user_id = get_current_user()
         try:
             month = (request.args.get("month") or "").strip() or None
+            start_date = (request.args.get("start_date") or "").strip() or None
+            end_date = (request.args.get("end_date") or "").strip() or None
+
+            # Validate date formats if provided
+            if start_date:
+                try:
+                    parse_iso_date(start_date)
+                except ValueError:
+                    return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+
+            if end_date:
+                try:
+                    parse_iso_date(end_date)
+                except ValueError:
+                    return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
 
             with get_db_connection() as conn:
+                query = """
+                    SELECT category, SUM(amount) AS category_amount
+                    FROM purchases
+                    WHERE user_id = ?
+                """
+                params = [user_id]
+
+                # Month filter takes precedence for backward compatibility
                 if month:
-                    rows = conn.execute(
-                        """
-                        SELECT category, SUM(amount) AS category_amount
-                        FROM purchases
-                        WHERE strftime('%Y-%m', date) = ? AND user_id = ?
-                        GROUP BY category
-                        ORDER BY category_amount DESC
-                        """,
-                        (month, user_id),
-                    ).fetchall()
+                    query += " AND strftime('%Y-%m', date) = ?"
+                    params.append(month)
                 else:
-                    rows = conn.execute(
-                        """
-                        SELECT category, SUM(amount) AS category_amount
-                        FROM purchases
-                        WHERE user_id = ?
-                        GROUP BY category
-                        ORDER BY category_amount DESC
-                        """,
-                        (user_id,)
-                    ).fetchall()
+                    if start_date:
+                        query += " AND date >= ?"
+                        params.append(start_date)
+
+                    if end_date:
+                        query += " AND date <= ?"
+                        params.append(end_date)
+
+                query += " GROUP BY category ORDER BY category_amount DESC"
+
+                rows = conn.execute(query, params).fetchall()
 
             data = [
                 {
