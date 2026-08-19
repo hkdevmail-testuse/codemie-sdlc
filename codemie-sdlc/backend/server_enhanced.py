@@ -370,63 +370,12 @@ def delete_category(
 
 
 # ================================================
-# Enhanced Expense Endpoints
-# ================================================
-
-@app.get("/api/expenses/{expense_date}", response_model=List[Expense], tags=["Expenses"])
-def get_expenses(
-    expense_date: date,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Get expenses for a specific date
-    Enhancement: SCRUM-95 (Security - user isolation)
-    """
-    expenses = db_helper.fetch_expenses_for_date(expense_date, current_user["user_id"])
-    
-    if expenses is None:
-        raise HTTPException(status_code=500, detail="Failed to retrieve expenses from database.")
-    
-    return expenses
-
-
-@app.post("/api/expenses/{expense_date}", tags=["Expenses"])
-def add_or_update_expense(
-    expense_date: date,
-    expenses: List[Expense],
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Add or update expenses for a date
-    Enhancement: SCRUM-92 (Validation), SCRUM-95 (Security)
-    """
-    try:
-        # Delete existing expenses for the date
-        db_helper.delete_expenses_for_date(expense_date, current_user["user_id"])
-        
-        # Insert new expenses with validation
-        for expense in expenses:
-            db_helper.insert_expense(
-                expense_date,
-                expense.amount,
-                expense.category,
-                expense.notes,
-                current_user["user_id"]
-            )
-        
-        return {"message": "Expenses updated successfully"}
-    
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update expenses: {str(e)}")
-
-
-# ================================================
 # SCRUM-93: Filtering & Pagination
+# (Static routes MUST be defined BEFORE dynamic routes)
 # ================================================
 
 @app.post("/api/expenses/filter", response_model=Dict[str, Any], tags=["Expenses"])
+@app.post("/api/expenses/filter/", response_model=Dict[str, Any], tags=["Expenses"], include_in_schema=False)
 def filter_expenses(
     filters: ExpenseFilter,
     page: int = Query(1, ge=1, description="Page number"),
@@ -475,44 +424,8 @@ def filter_expenses(
 
 
 # ================================================
-# SCRUM-97: Optimized Analytics
-# ================================================
-
-@app.post("/api/analytics/", tags=["Analytics"])
-def get_analytics(
-    date_range: DateRange,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Get expense analytics with performance optimization
-    Enhancement: SCRUM-97 (Performance)
-    """
-    data = db_helper.fetch_expense_summary(
-        date_range.start_date,
-        date_range.end_date,
-        current_user["user_id"]
-    )
-    
-    if data is None:
-        raise HTTPException(status_code=500, detail="Failed to retrieve expense summary")
-    
-    total = sum([row['total'] for row in data])
-    breakdown = {}
-    
-    for row in data:
-        percentage = (float(row['total']) / total * 100) if total != 0 else 0
-        breakdown[row['category']] = {
-            'total': float(row['total']),
-            'percentage': round(percentage, 2),
-            'count': row.get('count', 0),
-            'average': float(row.get('average', 0))
-        }
-    
-    return breakdown
-
-
-# ================================================
 # SCRUM-94: Export Functionality
+# (Static routes MUST be defined BEFORE dynamic routes)
 # ================================================
 
 @app.get("/api/expenses/export/csv", tags=["Export"])
@@ -598,6 +511,97 @@ def export_expense_summary(
             ]
         }
     }
+
+
+# ================================================
+# Enhanced Expense Endpoints
+# (Dynamic routes MUST be defined AFTER static routes)
+# ================================================
+
+@app.get("/api/expenses/{expense_date}", response_model=List[Expense], tags=["Expenses"])
+def get_expenses(
+    expense_date: date,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get expenses for a specific date
+    Enhancement: SCRUM-95 (Security - user isolation)
+    """
+    expenses = db_helper.fetch_expenses_for_date(expense_date, current_user["user_id"])
+    
+    if expenses is None:
+        raise HTTPException(status_code=500, detail="Failed to retrieve expenses from database.")
+    
+    return expenses
+
+
+@app.post("/api/expenses/{expense_date}", tags=["Expenses"])
+def add_or_update_expense(
+    expense_date: date,
+    expenses: List[Expense],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Add or update expenses for a date
+    Enhancement: SCRUM-92 (Validation), SCRUM-95 (Security)
+    """
+    try:
+        # Delete existing expenses for the date
+        db_helper.delete_expenses_for_date(expense_date, current_user["user_id"])
+        
+        # Insert new expenses with validation
+        for expense in expenses:
+            db_helper.insert_expense(
+                expense_date,
+                expense.amount,
+                expense.category,
+                expense.notes,
+                current_user["user_id"]
+            )
+        
+        return {"message": "Expenses updated successfully"}
+    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update expenses: {str(e)}")
+
+
+# ================================================
+# SCRUM-97: Optimized Analytics
+# ================================================
+
+@app.post("/api/analytics/", tags=["Analytics"])
+def get_analytics(
+    date_range: DateRange,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get expense analytics with performance optimization
+    Enhancement: SCRUM-97 (Performance)
+    """
+    data = db_helper.fetch_expense_summary(
+        date_range.start_date,
+        date_range.end_date,
+        current_user["user_id"]
+    )
+    
+    if data is None:
+        raise HTTPException(status_code=500, detail="Failed to retrieve expense summary")
+    
+    total = sum([row['total'] for row in data])
+    breakdown = {}
+    
+    for row in data:
+        percentage = (float(row['total']) / total * 100) if total != 0 else 0
+        breakdown[row['category']] = {
+            'total': float(row['total']),
+            'percentage': round(percentage, 2),
+            'count': row.get('count', 0),
+            'average': float(row.get('average', 0))
+        }
+    
+    return breakdown
 
 
 # ================================================
