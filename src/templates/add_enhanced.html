@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Expense - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles_enhanced.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Expense Tracker</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('add_page') }}">Add Purchase</a>
+            <a href="{{ url_for('monthly_page') }}">Monthly Overview</a>
+            <a href="{{ url_for('recent_page') }}">View Recent</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="analytics-card">
+            <h2>Add a Purchase</h2>
+            
+            <form id="purchaseForm">
+                <label for="date">Date: *</label>
+                <input type="date" id="date" name="date" required>
+
+                <label for="business">Business: *</label>
+                <input type="text" id="business" name="business" required placeholder="Enter business name">
+
+                <label for="amount">Amount ($): *</label>
+                <input type="number" id="amount" name="amount" step="0.01" min="0" required placeholder="0.00">
+
+                <label for="category">Category: *</label>
+                <select id="category" name="category" onchange="toggleCustomCategory(this)" required>
+                    <option value="">Select a category</option>
+                    <option value="Groceries">Groceries</option>
+                    <option value="Furniture/Home">Furniture/Home</option>
+                    <option value="Gas/Car">Gas/Car</option>
+                    <option value="Clothes">Clothes</option>
+                    <option value="School/Office Supplies">School/Office Supplies</option>
+                    <option value="Restaurants">Restaurants</option>
+                    <option value="Misc">Misc</option>
+                    <option value="Other">Other (Custom)</option>
+                </select>
+
+                <input type="text" id="customCategory" name="customCategory" placeholder="Enter custom category" style="display: none;">
+
+                <label for="description">Description:</label>
+                <textarea id="description" name="description" rows="3" placeholder="Optional notes about this expense"></textarea>
+
+                <label for="photo">Receipt Photo:</label>
+                <input type="file" id="photo" name="photo" accept="image/*">
+                <small style="color: #666;">Max file size: 6MB</small>
+
+                <button type="submit">Add Purchase</button>
+            </form>
+
+            <div id="statusMessage" style="margin-top: 15px;"></div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script_enhanced.js') }}"></script>
+</body>
+</html>
