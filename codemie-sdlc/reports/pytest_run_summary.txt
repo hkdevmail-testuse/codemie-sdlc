@@ -1,0 +1,21 @@
+PyTest Execution Summary
+=======================
+
+Command:
+  python -m pytest -q
+
+Date (local):
+  2026-08-19
+
+Result:
+  FAILED
+
+Totals:
+  Passed: 28
+  Failed: 10
+  Skipped: 0
+
+Key Failures (high level):
+  - /expenses/filter returns 422 Unprocessable Entity for multiple filter scenarios (likely request schema mismatch)
+  - MySQL connection to localhost:3306 unavailable during test run (integration tests impacted)
+  - Pydantic v2 incompatibility in backend/server.py: Field(..., regex=...) must be Field(..., pattern=...)
